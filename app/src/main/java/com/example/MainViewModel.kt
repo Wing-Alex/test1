@@ -12,8 +12,7 @@ import java.net.URI
 
 enum class AppMode {
     PHONE_SERVER,
-    GLASSES_CLIENT,
-    GUIDE
+    GLASSES_CLIENT
 }
 
 data class ServerUiState(

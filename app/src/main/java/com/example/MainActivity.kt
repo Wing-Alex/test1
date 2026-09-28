@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,13 +129,6 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                     label = { Text("眼鏡端 (Client)") },
                     modifier = Modifier.testTag("tab_glasses_client")
                 )
-                NavigationBarItem(
-                    selected = currentMode == AppMode.GUIDE,
-                    onClick = { viewModel.setMode(AppMode.GUIDE) },
-                    icon = { Icon(Icons.Default.HelpOutline, contentDescription = null) },
-                    label = { Text("測試教學") },
-                    modifier = Modifier.testTag("tab_guide")
-                )
             }
         }
     ) { innerPadding ->
@@ -168,9 +160,6 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                         onInputChanged = { text -> viewModel.updateClientInput(text) },
                         onClearMessages = { viewModel.clearClientMessages() }
                     )
-                }
-                AppMode.GUIDE -> {
-                    IntegrationGuideScreen()
                 }
             }
         }
