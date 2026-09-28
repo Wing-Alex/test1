@@ -1,0 +1,6 @@
+{
+  "name": "INMO Link",
+  "description": "Wi-Fi WebSocket text communication test between Android Phone and INMO Air 3 smart glasses",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
