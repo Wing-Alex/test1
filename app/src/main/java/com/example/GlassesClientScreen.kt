@@ -24,9 +24,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -173,14 +175,14 @@ fun GlassesClientScreen(
                     OutlinedTextField(
                         value = state.targetIp,
                         onValueChange = onIpChanged,
-                        label = { Text("手機 IP (Server IP)") },
-                        placeholder = { Text("192.168.43.1") },
+                        label = { Text("手機 IP (純數字)") },
+                        placeholder = { Text("192.168.43.1 或 10.0.2.2") },
                         enabled = !state.isConnected && !state.isConnecting,
                         modifier = Modifier
                             .weight(0.7f)
                             .testTag("client_ip_input"),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                         shape = RoundedCornerShape(10.dp)
                     )
 
@@ -199,6 +201,40 @@ fun GlassesClientScreen(
                     )
                 }
 
+                Text(
+                    text = "提示：只須輸入純 IP 數字，系統會自動清除 ws:// 前綴與後綴斜線。",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+
+                // Quick Fill Presets for Real Device vs Emulator
+                if (!state.isConnected) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilledTonalButton(
+                            onClick = { onIpChanged("192.168.43.1") },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("填入熱點 (192.168.43.1)", fontSize = 11.sp)
+                        }
+
+                        FilledTonalButton(
+                            onClick = { onIpChanged("10.0.2.2") },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("填入模擬器 (10.0.2.2)", fontSize = 11.sp)
+                        }
+                    }
+                }
+
                 // Error Banner if present
                 if (state.errorMessage != null) {
                     Surface(
@@ -207,15 +243,15 @@ fun GlassesClientScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(
                                 Icons.Default.ErrorOutline,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = state.errorMessage,
@@ -286,7 +322,7 @@ fun GlassesClientScreen(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                         Text(
-                            text = "請確認已連上手機熱點，輸入手機 IP 後按「連線」，\n點擊下方「快速傳送：Hello Phone」測試！",
+                            text = "• 實體手機熱點：請輸入 192.168.43.1\n• 電腦兩台模擬器：請輸入 10.0.2.2 (需先於終端機執行 adb forward)\n點擊「連線」後即可測試互傳！",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -373,7 +409,6 @@ fun GlassesMessageBubble(msg: ChatMessage) {
 
         Spacer(Modifier.height(3.dp))
 
-        // High-contrast, large text display for smart glasses
         Surface(
             shape = RoundedCornerShape(
                 topStart = 14.dp,

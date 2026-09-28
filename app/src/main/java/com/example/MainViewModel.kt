@@ -20,6 +20,7 @@ data class ServerUiState(
     val port: Int = 8080,
     val primaryIp: String = "Detecting...",
     val allIps: List<NetworkUtils.NetworkIpInfo> = emptyList(),
+    val isEmulator: Boolean = false,
     val connectedClientsCount: Int = 0,
     val lastClientAddress: String? = null,
     val messages: List<ChatMessage> = emptyList(),
@@ -32,6 +33,7 @@ data class ClientUiState(
     val targetPort: String = "8080",
     val isConnected: Boolean = false,
     val isConnecting: Boolean = false,
+    val isEmulator: Boolean = false,
     val statusMessage: String = "Disconnected",
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
@@ -67,11 +69,16 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val ips = NetworkUtils.getLocalIPv4Addresses()
             val primary = NetworkUtils.getPrimaryIp()
+            val isEmu = NetworkUtils.isEmulator()
             _serverState.update {
                 it.copy(
                     allIps = ips,
-                    primaryIp = primary
+                    primaryIp = primary,
+                    isEmulator = isEmu
                 )
+            }
+            _clientState.update {
+                it.copy(isEmulator = isEmu)
             }
         }
     }
@@ -90,7 +97,7 @@ class MainViewModel : ViewModel() {
                             it.copy(
                                 isRunning = true,
                                 port = port,
-                                statusMessage = "Server running on port $port"
+                                statusMessage = "Server 運行中 (Port $port)"
                             )
                         }
                     }
@@ -100,7 +107,7 @@ class MainViewModel : ViewModel() {
                             it.copy(
                                 connectedClientsCount = totalClients,
                                 lastClientAddress = clientAddress,
-                                statusMessage = "Client connected: $clientAddress"
+                                statusMessage = "已連線裝置: $clientAddress"
                             )
                         }
                     }
@@ -109,7 +116,7 @@ class MainViewModel : ViewModel() {
                         _serverState.update {
                             it.copy(
                                 connectedClientsCount = totalClients,
-                                statusMessage = if (totalClients == 0) "Client disconnected" else "$totalClients client(s) connected"
+                                statusMessage = if (totalClients == 0) "客戶端已中斷連線" else "$totalClients 裝置連線中"
                             )
                         }
                     }
@@ -118,7 +125,7 @@ class MainViewModel : ViewModel() {
                         val chatMsg = ChatMessage(
                             text = message,
                             isOutgoing = false,
-                            senderLabel = "Glasses ($fromAddress)"
+                            senderLabel = "眼鏡 ($fromAddress)"
                         )
                         _serverState.update {
                             it.copy(messages = it.messages + chatMsg)
@@ -127,7 +134,7 @@ class MainViewModel : ViewModel() {
 
                     override fun onErrorOccurred(error: String) {
                         _serverState.update {
-                            it.copy(statusMessage = "Server error: $error")
+                            it.copy(statusMessage = "Server 錯誤: $error")
                         }
                     }
 
@@ -136,7 +143,7 @@ class MainViewModel : ViewModel() {
                             it.copy(
                                 isRunning = false,
                                 connectedClientsCount = 0,
-                                statusMessage = "Server stopped"
+                                statusMessage = "Server 已停止"
                             )
                         }
                     }
@@ -148,7 +155,7 @@ class MainViewModel : ViewModel() {
                 _serverState.update {
                     it.copy(
                         isRunning = false,
-                        statusMessage = "Start failed: ${e.message}"
+                        statusMessage = "啟動失敗: ${e.message}"
                     )
                 }
             }
@@ -163,7 +170,7 @@ class MainViewModel : ViewModel() {
                 it.copy(
                     isRunning = false,
                     connectedClientsCount = 0,
-                    statusMessage = "Server stopped"
+                    statusMessage = "Server 已停止"
                 )
             }
         }
@@ -178,7 +185,7 @@ class MainViewModel : ViewModel() {
         if (trimmed.isEmpty()) return
         val currentServer = serverInstance
         if (currentServer == null || !_serverState.value.isRunning) {
-            _serverState.update { it.copy(statusMessage = "Cannot send: Server is not running") }
+            _serverState.update { it.copy(statusMessage = "無法發送：Server 尚未啟動") }
             return
         }
 
@@ -188,7 +195,7 @@ class MainViewModel : ViewModel() {
                 val outMsg = ChatMessage(
                     text = trimmed,
                     isOutgoing = true,
-                    senderLabel = "Phone (Server)"
+                    senderLabel = "手機 (Server)"
                 )
                 _serverState.update {
                     it.copy(
@@ -206,8 +213,24 @@ class MainViewModel : ViewModel() {
 
     // --- INMO Air 3 Glasses Client Operations ---
 
-    fun updateTargetIp(ip: String) {
-        _clientState.update { it.copy(targetIp = ip.trim(), errorMessage = null) }
+    fun updateTargetIp(rawInput: String) {
+        val (cleanIp, cleanPort) = NetworkUtils.sanitizeHostAndPort(rawInput, _clientState.value.targetPort)
+        _clientState.update {
+            it.copy(
+                targetIp = cleanIp,
+                targetPort = cleanPort,
+                errorMessage = null
+            )
+        }
+    }
+
+    fun setTargetIpPreset(ip: String) {
+        _clientState.update {
+            it.copy(
+                targetIp = ip,
+                errorMessage = null
+            )
+        }
     }
 
     fun updateTargetPort(port: String) {
@@ -219,20 +242,24 @@ class MainViewModel : ViewModel() {
     }
 
     fun connectClient() {
-        val ip = _clientState.value.targetIp.trim()
-        val portStr = _clientState.value.targetPort.trim()
+        val (ip, portStr) = NetworkUtils.sanitizeHostAndPort(
+            _clientState.value.targetIp,
+            _clientState.value.targetPort
+        )
         val port = portStr.toIntOrNull() ?: 8080
 
         if (ip.isEmpty()) {
-            _clientState.update { it.copy(errorMessage = "Please enter Phone Server IP") }
+            _clientState.update { it.copy(errorMessage = "請輸入手機 Server IP") }
             return
         }
 
         _clientState.update {
             it.copy(
+                targetIp = ip,
+                targetPort = port.toString(),
                 isConnecting = true,
                 errorMessage = null,
-                statusMessage = "Connecting to ws://$ip:$port..."
+                statusMessage = "連線中至 ws://$ip:$port..."
             )
         }
 
@@ -246,7 +273,7 @@ class MainViewModel : ViewModel() {
                             it.copy(
                                 isConnected = true,
                                 isConnecting = false,
-                                statusMessage = "Connected to ws://$ip:$port",
+                                statusMessage = "已連線至 ws://$ip:$port",
                                 errorMessage = null
                             )
                         }
@@ -257,7 +284,7 @@ class MainViewModel : ViewModel() {
                             it.copy(
                                 isConnected = false,
                                 isConnecting = false,
-                                statusMessage = "Disconnected: $reason"
+                                statusMessage = "已中斷連線: $reason"
                             )
                         }
                     }
@@ -266,7 +293,7 @@ class MainViewModel : ViewModel() {
                         val chatMsg = ChatMessage(
                             text = message,
                             isOutgoing = false,
-                            senderLabel = "Phone"
+                            senderLabel = "手機"
                         )
                         _clientState.update {
                             it.copy(messages = it.messages + chatMsg)
@@ -274,11 +301,22 @@ class MainViewModel : ViewModel() {
                     }
 
                     override fun onErrorOccurred(error: String) {
+                        val friendlyError = if (error.contains("ETIMEDOUT") || error.contains("failed to connect") || error.contains("ECONNREFUSED")) {
+                            if (ip.startsWith("10.0.2.") && ip != "10.0.2.2") {
+                                "連線失敗。\n⚠️ 兩台模擬器互連時，請勿輸入「10.0.2.16」，因為每個模擬器的 10.0.2.x 都是獨立虛擬網段。\n✅ 正確做法：\n1. 請將 IP 改填「10.0.2.2」\n2. 在電腦終端機 (Terminal) 執行：\n   adb forward tcp:8080 tcp:8080\n若是實體手機熱點，請輸入「192.168.43.1」。"
+                            } else if (ip == "10.0.2.2") {
+                                "連線失敗。\n若使用兩台電腦模擬器測試，請在電腦 Terminal 執行：\nadb forward tcp:8080 tcp:8080\n然後確認 Server 端已點擊「啟動」再連線！"
+                            } else {
+                                "連線失敗 ($error)。\n請確認：\n1. Server 端已點擊「啟動 (Port 8080)」\n2. 兩台裝置在同一個 Wi-Fi 或手機熱點下\n3. 若使用實體手機熱點，IP 通常為 192.168.43.1"
+                            }
+                        } else {
+                            error
+                        }
                         _clientState.update {
                             it.copy(
                                 isConnecting = false,
-                                errorMessage = error,
-                                statusMessage = "Error: $error"
+                                errorMessage = friendlyError,
+                                statusMessage = "連線失敗"
                             )
                         }
                     }
@@ -291,7 +329,7 @@ class MainViewModel : ViewModel() {
                         isConnecting = false,
                         isConnected = false,
                         errorMessage = e.message,
-                        statusMessage = "Connection failed: ${e.message}"
+                        statusMessage = "連線異常: ${e.message}"
                     )
                 }
             }
@@ -310,7 +348,7 @@ class MainViewModel : ViewModel() {
                 it.copy(
                     isConnected = false,
                     isConnecting = false,
-                    statusMessage = "Disconnected"
+                    statusMessage = "已中斷連線"
                 )
             }
         }
@@ -322,7 +360,7 @@ class MainViewModel : ViewModel() {
         val client = clientInstance
 
         if (client == null || !client.isOpen) {
-            _clientState.update { it.copy(errorMessage = "Cannot send: Not connected to phone") }
+            _clientState.update { it.copy(errorMessage = "無法傳送：尚未連線至手機") }
             return
         }
 
@@ -332,7 +370,7 @@ class MainViewModel : ViewModel() {
                 val outMsg = ChatMessage(
                     text = trimmed,
                     isOutgoing = true,
-                    senderLabel = "Glasses"
+                    senderLabel = "眼鏡"
                 )
                 _clientState.update {
                     it.copy(

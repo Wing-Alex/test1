@@ -1,5 +1,6 @@
 package com.example
 
+import android.os.Build
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
@@ -11,6 +12,25 @@ object NetworkUtils {
         val ipAddress: String,
         val isLikelyHotspot: Boolean
     )
+
+    fun isEmulator(): Boolean {
+        return (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
+                Build.FINGERPRINT.startsWith("generic") ||
+                Build.FINGERPRINT.startsWith("unknown") ||
+                Build.HARDWARE.contains("goldfish") ||
+                Build.HARDWARE.contains("ranchu") ||
+                Build.MODEL.contains("google_sdk") ||
+                Build.MODEL.contains("Emulator") ||
+                Build.MODEL.contains("Android SDK built for x86") ||
+                Build.MANUFACTURER.contains("Genymotion") ||
+                Build.PRODUCT.contains("sdk_google") ||
+                Build.PRODUCT.contains("google_sdk") ||
+                Build.PRODUCT.contains("sdk") ||
+                Build.PRODUCT.contains("sdk_x86") ||
+                Build.PRODUCT.contains("vbox86p") ||
+                Build.PRODUCT.contains("emulator") ||
+                Build.PRODUCT.contains("simulator")
+    }
 
     /**
      * Finds all active IPv4 addresses on device network interfaces.
@@ -58,5 +78,30 @@ object NetworkUtils {
         val wifi = ips.firstOrNull { it.interfaceName.lowercase().contains("wlan") }
         if (wifi != null) return wifi.ipAddress
         return ips.firstOrNull()?.ipAddress ?: "192.168.43.1"
+    }
+
+    /**
+     * Cleans up input IP: strips prefixes like ws://, http://, removes trailing slashes,
+     * and separates host and port if passed as host:port.
+     */
+    fun sanitizeHostAndPort(rawHost: String, rawPort: String): Pair<String, String> {
+        var host = rawHost.trim()
+            .removePrefix("ws://")
+            .removePrefix("wss://")
+            .removePrefix("http://")
+            .removePrefix("https://")
+            .trimEnd('/')
+
+        var port = rawPort.trim()
+
+        if (host.contains(":")) {
+            val parts = host.split(":")
+            host = parts[0]
+            if (parts.size > 1 && parts[1].toIntOrNull() != null) {
+                port = parts[1]
+            }
+        }
+
+        return Pair(host, port)
     }
 }
