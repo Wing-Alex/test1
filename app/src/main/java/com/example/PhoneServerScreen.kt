@@ -86,8 +86,8 @@ fun PhoneServerScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Status & IP Card
         Card(
@@ -95,11 +95,11 @@ fun PhoneServerScreen(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(14.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Header with status indicator & Start/Stop toggle
                 Row(
@@ -113,7 +113,7 @@ fun PhoneServerScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(10.dp)
                                 .clip(CircleShape)
                                 .background(
                                     if (state.isRunning) Color(0xFF10B981) else Color(0xFF94A3B8)
@@ -121,7 +121,7 @@ fun PhoneServerScreen(
                         )
                         Text(
                             text = if (state.isRunning) "Server 運行中" else "Server 已停止",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -133,10 +133,11 @@ fun PhoneServerScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                             modifier = Modifier.testTag("server_start_button")
                         ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("啟動 (8080)")
                         }
@@ -146,130 +147,72 @@ fun PhoneServerScreen(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                             modifier = Modifier.testTag("server_stop_button")
                         ) {
-                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("停止")
                         }
                     }
                 }
 
-                // Pure Numeric IP Display Card (Designed to be clean and copyable)
+                // Compact Pure Numeric IP Display Card (Yellow tip removed)
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(
-                                    text = "供眼鏡端輸入之純 IP 數字",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
+                        Column {
+                            Text(
+                                text = "眼鏡端連線 IP：",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = state.primaryIp,
-                                    style = MaterialTheme.typography.headlineMedium,
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                                Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = "Port 連接埠：${state.port} (WebSocket: ws://${state.primaryIp}:${state.port})",
+                                    text = "Port: ${state.port}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
                             }
-
-                            Row {
-                                IconButton(onClick = onRefreshNetwork) {
-                                    Icon(Icons.Default.Refresh, contentDescription = "重新偵測 IP")
-                                }
-                                Button(
-                                    onClick = {
-                                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        cm.setPrimaryClip(ClipData.newPlainText("Server IP", state.primaryIp))
-                                        Toast.makeText(context, "已複製純 IP：${state.primaryIp}", Toast.LENGTH_SHORT).show()
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                ) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("複製數字")
-                                }
-                            }
                         }
 
-                        // Special Environment Hint (Emulator vs Real Device)
-                        if (state.isEmulator) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFFEF3C7),
-                                modifier = Modifier.fillMaxWidth()
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = onRefreshNetwork,
+                                modifier = Modifier.size(36.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    Icon(
-                                        Icons.Default.Computer,
-                                        contentDescription = null,
-                                        tint = Color(0xFFB45309),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Text(
-                                            text = "目前為電腦模擬器環境 (IP: ${state.primaryIp})",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF92400E)
-                                        )
-                                        Text(
-                                            text = "• 兩台模擬器互連：因模擬器虛擬網路隔離，Client 模擬器請直接填「10.0.2.2」，並在電腦終端機執行一次：adb forward tcp:8080 tcp:8080\n• 實體手機 + INMO Air 3 眼鏡：真機開啟熱點後，眼鏡端請直接輸入「192.168.43.1」。",
-                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                            color = Color(0xFF78350F)
-                                        )
-                                    }
-                                }
+                                Icon(Icons.Default.Refresh, contentDescription = "重新偵測 IP", modifier = Modifier.size(18.dp))
                             }
-                        } else {
-                            Surface(
+                            Button(
+                                onClick = {
+                                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    cm.setPrimaryClip(ClipData.newPlainText("Server IP", state.primaryIp))
+                                    Toast.makeText(context, "已複製純 IP：${state.primaryIp}", Toast.LENGTH_SHORT).show()
+                                },
                                 shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFE0F2FE),
-                                modifier = Modifier.fillMaxWidth()
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.PhoneAndroid,
-                                        contentDescription = null,
-                                        tint = Color(0xFF0369A1),
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Text(
-                                        text = "實體手機模式：請確認已開啟個人熱點，INMO Air 3 眼鏡連線至此熱點後輸入上方 IP (${state.primaryIp}) 即可直接通訊！",
-                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                        color = Color(0xFF075985)
-                                    )
-                                }
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("複製", fontSize = 12.sp)
                             }
                         }
                     }
@@ -301,7 +244,7 @@ fun PhoneServerScreen(
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isConnected) Color(0xFF2E7D32) else Color(0xFF64748B),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
                     }
