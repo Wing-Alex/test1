@@ -209,28 +209,44 @@ fun GlassesClientScreen(
 
                 // Quick Fill Presets for Real Device vs Emulator
                 if (!state.isConnected) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         FilledTonalButton(
-                            onClick = { onIpChanged("192.168.43.1") },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                            onClick = {
+                                val detectedGateway = NetworkUtils.getWifiGatewayIp(context)
+                                if (!detectedGateway.isNullOrBlank()) {
+                                    onIpChanged(detectedGateway)
+                                    android.widget.Toast.makeText(context, "偵測到熱點主機：$detectedGateway", android.widget.Toast.LENGTH_SHORT).show()
+                                } else {
+                                    onIpChanged("192.168.43.1")
+                                    android.widget.Toast.makeText(context, "未偵測到 Gateway，已填入預設熱點 192.168.43.1", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1.3f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
                         ) {
                             Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("填入熱點 (192.168.43.1)", fontSize = 11.sp)
+                            Text("⚡自動偵測熱點主機", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        FilledTonalButton(
+                            onClick = { onIpChanged("192.168.43.1") },
+                            modifier = Modifier.weight(0.9f),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        ) {
+                            Text("192.168.43.1", fontSize = 11.sp)
                         }
 
                         FilledTonalButton(
                             onClick = { onIpChanged("10.0.2.2") },
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                            modifier = Modifier.weight(0.8f),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                         ) {
-                            Icon(Icons.Default.Computer, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("填入模擬器 (10.0.2.2)", fontSize = 11.sp)
+                            Text("10.0.2.2", fontSize = 11.sp)
                         }
                     }
                 }

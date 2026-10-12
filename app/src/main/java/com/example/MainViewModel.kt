@@ -301,17 +301,12 @@ class MainViewModel : ViewModel() {
                     }
 
                     override fun onErrorOccurred(error: String) {
-                        val friendlyError = if (error.contains("ETIMEDOUT") || error.contains("failed to connect") || error.contains("ECONNREFUSED")) {
-                            if (ip.startsWith("10.0.2.") && ip != "10.0.2.2") {
-                                "連線失敗。\n⚠️ 兩台模擬器互連時，請勿輸入「10.0.2.16」，因為每個模擬器的 10.0.2.x 都是獨立虛擬網段。\n✅ 正確做法：\n1. 請將 IP 改填「10.0.2.2」\n2. 在電腦終端機 (Terminal) 執行：\n   adb forward tcp:8080 tcp:8080\n若是實體手機熱點，請輸入「192.168.43.1」。"
-                            } else if (ip == "10.0.2.2") {
-                                "連線失敗。\n若使用兩台電腦模擬器測試，請在電腦 Terminal 執行：\nadb forward tcp:8080 tcp:8080\n然後確認 Server 端已點擊「啟動」再連線！"
-                            } else {
-                                "連線失敗 ($error)。\n請確認：\n1. Server 端已點擊「啟動 (Port 8080)」\n2. 兩台裝置在同一個 Wi-Fi 或手機熱點下\n3. 若使用實體手機熱點，IP 通常為 192.168.43.1"
-                            }
-                        } else {
-                            error
-                        }
+                        val friendlyError = "連線失敗 ($error)\n\n" +
+                                "🔍 排查建議：\n" +
+                                "1. 請確認手機端已開啟 App 並點擊「啟動 (8080)」\n" +
+                                "2. 請確認眼鏡已連上手機熱點 Wi-Fi\n" +
+                                "3. 手機熱點若有「AP 隔離 / 允許設備互訪」，請開啟允許互訪\n" +
+                                "4. 請檢查手機 Server 上顯示的 IP 與眼鏡端填入的是否完全一致"
                         _clientState.update {
                             it.copy(
                                 isConnecting = false,
