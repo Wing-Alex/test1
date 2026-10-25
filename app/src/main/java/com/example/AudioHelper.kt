@@ -18,10 +18,15 @@ object AudioHelper {
     private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
 
     private var audioRecord: AudioRecord? = null
+    @Volatile
     private var isRecording = false
     private var audioTrack: AudioTrack? = null
 
-    suspend fun recordAudioClip(maxDurationSec: Int = 5): Pair<ByteArray, Int> = withContext(Dispatchers.IO) {
+    /**
+     * Records audio continuously until stopRecording() is called,
+     * or until maxDurationSec (safety ceiling of 120 seconds).
+     */
+    suspend fun recordAudioClip(maxDurationSec: Int = 120): Pair<ByteArray, Int> = withContext(Dispatchers.IO) {
         val bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG_IN, AUDIO_FORMAT)
         if (bufferSize <= 0) return@withContext Pair(ByteArray(0), 0)
 

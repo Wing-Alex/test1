@@ -266,7 +266,7 @@ class MainViewModel : ViewModel() {
     fun startServerVoiceRecording() {
         _serverState.update { it.copy(isRecordingVoice = true) }
         viewModelScope.launch(Dispatchers.IO) {
-            val (audioData, duration) = AudioHelper.recordAudioClip(5)
+            val (audioData, duration) = AudioHelper.recordAudioClip(120)
             _serverState.update { it.copy(isRecordingVoice = false) }
             if (audioData.isNotEmpty() && duration > 0) {
                 val currentServer = serverInstance
@@ -523,7 +523,7 @@ class MainViewModel : ViewModel() {
     fun startClientVoiceRecording() {
         _clientState.update { it.copy(isRecordingVoice = true) }
         viewModelScope.launch(Dispatchers.IO) {
-            val (audioData, duration) = AudioHelper.recordAudioClip(5)
+            val (audioData, duration) = AudioHelper.recordAudioClip(120)
             _clientState.update { it.copy(isRecordingVoice = false) }
             if (audioData.isNotEmpty() && duration > 0) {
                 val client = clientInstance

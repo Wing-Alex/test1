@@ -137,7 +137,7 @@ fun MediaActionPanel(
                 Text(if (isStreamingVideo) "停止視訊" else "即時影像", fontSize = 11.sp)
             }
 
-            // Voice Clip Record Button
+            // Voice Clip Record Button: Click to start, click again to stop & send
             Button(
                 onClick = {
                     if (isRecordingVoice) {
@@ -160,7 +160,7 @@ fun MediaActionPanel(
                     modifier = Modifier.size(12.dp)
                 )
                 Spacer(Modifier.width(3.dp))
-                Text(if (isRecordingVoice) "錄音中..." else "錄音傳送", fontSize = 11.sp)
+                Text(if (isRecordingVoice) "停止傳送 ■" else "開始錄音 ●", fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
 

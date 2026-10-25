@@ -9,17 +9,21 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -89,9 +94,9 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            // Clean Top Header with proper Safe Drawing WindowInsets
+            // Clean Top Header with explicit statusBars padding to guarantee no overlap
+            val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.fillMaxWidth()
@@ -99,11 +104,11 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(start = 10.dp, end = 10.dp, top = statusBarTop + 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(5.dp),
+                        shape = RoundedCornerShape(4.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
                         modifier = Modifier.padding(end = 6.dp)
                     ) {
@@ -113,17 +118,18 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                            fontSize = 10.sp
+                            fontSize = 9.sp
                         )
                     }
                     Text(
                         text = "INMO Link",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
                     )
                     Text(
                         text = " • 雙向影音文字",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         modifier = Modifier.padding(start = 4.dp)
                     )
@@ -131,23 +137,82 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            // Ultra-slim Custom Bottom Tab Switcher with navigationBars insets support
+            val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                NavigationBarItem(
-                    selected = currentMode == AppMode.PHONE_SERVER,
-                    onClick = { viewModel.setMode(AppMode.PHONE_SERVER) },
-                    icon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    label = { Text("手機端 (Server)", fontSize = 10.sp) },
-                    modifier = Modifier.testTag("tab_phone_server")
-                )
-                NavigationBarItem(
-                    selected = currentMode == AppMode.GLASSES_CLIENT,
-                    onClick = { viewModel.setMode(AppMode.GLASSES_CLIENT) },
-                    icon = { Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                    label = { Text("眼鏡端 (Client)", fontSize = 10.sp) },
-                    modifier = Modifier.testTag("tab_glasses_client")
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 8.dp, end = 8.dp, top = 2.dp, bottom = navBarBottom + 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val isServer = currentMode == AppMode.PHONE_SERVER
+                    // Server Tab
+                    Surface(
+                        onClick = { viewModel.setMode(AppMode.PHONE_SERVER) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isServer) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(34.dp)
+                            .testTag("tab_phone_server")
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.PhoneAndroid,
+                                contentDescription = null,
+                                tint = if (isServer) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "手機端 (Server)",
+                                fontSize = 11.sp,
+                                fontWeight = if (isServer) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isServer) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Client Tab
+                    val isClient = currentMode == AppMode.GLASSES_CLIENT
+                    Surface(
+                        onClick = { viewModel.setMode(AppMode.GLASSES_CLIENT) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isClient) MaterialTheme.colorScheme.primary else Color.Transparent,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(34.dp)
+                            .testTag("tab_glasses_client")
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = if (isClient) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "眼鏡端 (Client)",
+                                fontSize = 11.sp,
+                                fontWeight = if (isClient) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isClient) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     ) { innerPadding ->
