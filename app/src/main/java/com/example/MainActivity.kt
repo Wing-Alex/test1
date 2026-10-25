@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -37,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -62,7 +65,6 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
     val serverState by viewModel.serverState.collectAsStateWithLifecycle()
     val clientState by viewModel.clientState.collectAsStateWithLifecycle()
 
-    // Request Camera and Audio permissions at runtime for media features
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { _ -> }
@@ -80,7 +82,6 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
         }
     }
 
-    // Handle back button: if in submode, return to default phone server mode
     BackHandler(enabled = currentMode != AppMode.PHONE_SERVER) {
         viewModel.setMode(AppMode.PHONE_SERVER)
     }
@@ -92,56 +93,59 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 0.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(6.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.padding(end = 10.dp)
+                            modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Text(
                                 text = "Wi-Fi",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                             )
                         }
-                        Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "INMO Link",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "INMO Air 3 & Android 雙向視訊・文字・語音",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                text = " • 雙向影音文字",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.padding(start = 6.dp)
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
-                )
+                ),
+                modifier = Modifier.height(48.dp)
             )
         },
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.height(56.dp)
             ) {
                 NavigationBarItem(
                     selected = currentMode == AppMode.PHONE_SERVER,
                     onClick = { viewModel.setMode(AppMode.PHONE_SERVER) },
-                    icon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null) },
-                    label = { Text("手機端 (Server)") },
+                    icon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    label = { Text("手機端 (Server)", fontSize = 11.sp) },
                     modifier = Modifier.testTag("tab_phone_server")
                 )
                 NavigationBarItem(
                     selected = currentMode == AppMode.GLASSES_CLIENT,
                     onClick = { viewModel.setMode(AppMode.GLASSES_CLIENT) },
-                    icon = { Icon(Icons.Default.Visibility, contentDescription = null) },
-                    label = { Text("眼鏡端 (Client)") },
+                    icon = { Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    label = { Text("眼鏡端 (Client)", fontSize = 11.sp) },
                     modifier = Modifier.testTag("tab_glasses_client")
                 )
             }
@@ -165,6 +169,7 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                         onStartVoiceRecord = { viewModel.startServerVoiceRecording() },
                         onStopVoiceRecord = { viewModel.stopServerVoiceRecording() },
                         onPlayAudio = { data -> viewModel.playVoiceMessage(data) },
+                        onCloseLiveFrame = { viewModel.closeServerRemoteLiveFrame() },
                         onInputChanged = { text -> viewModel.updateServerInput(text) },
                         onClearMessages = { viewModel.clearServerMessages() }
                     )
@@ -182,6 +187,7 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                         onStartVoiceRecord = { viewModel.startClientVoiceRecording() },
                         onStopVoiceRecord = { viewModel.stopClientVoiceRecording() },
                         onPlayAudio = { data -> viewModel.playVoiceMessage(data) },
+                        onCloseLiveFrame = { viewModel.closeClientRemoteLiveFrame() },
                         onInputChanged = { text -> viewModel.updateClientInput(text) },
                         onClearMessages = { viewModel.clearClientMessages() }
                     )

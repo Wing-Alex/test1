@@ -76,6 +76,7 @@ fun GlassesClientScreen(
     onStartVoiceRecord: () -> Unit,
     onStopVoiceRecord: () -> Unit,
     onPlayAudio: (ByteArray) -> Unit,
+    onCloseLiveFrame: () -> Unit,
     onInputChanged: (String) -> Unit,
     onClearMessages: () -> Unit,
     modifier: Modifier = Modifier
@@ -93,10 +94,10 @@ fun GlassesClientScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 10.dp, vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Glasses Client Connection Card
+        // Glasses Client Connection Card - Ultra Compact
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -104,11 +105,11 @@ fun GlassesClientScreen(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(10.dp)
         ) {
             Column(
-                modifier = Modifier.padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Header with status indicator & Connect toggle
                 Row(
@@ -118,11 +119,11 @@ fun GlassesClientScreen(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(10.dp)
+                                .size(8.dp)
                                 .clip(CircleShape)
                                 .background(
                                     when {
@@ -134,11 +135,11 @@ fun GlassesClientScreen(
                         )
                         Text(
                             text = when {
-                                state.isConnected -> "已連線 (Connected)"
+                                state.isConnected -> "已連線至手機"
                                 state.isConnecting -> "連線中..."
                                 else -> "未連線"
                             },
-                            style = MaterialTheme.typography.titleSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -148,37 +149,39 @@ fun GlassesClientScreen(
                     if (state.isConnected) {
                         Button(
                             onClick = onDisconnect,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("client_disconnect_button")
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+                            modifier = Modifier
+                                .height(30.dp)
+                                .testTag("client_disconnect_button")
                         ) {
-                            Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("中斷")
+                            Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(2.dp))
+                            Text("中斷", fontSize = 11.sp)
                         }
                     } else {
                         Button(
                             onClick = { onConnect(context) },
                             enabled = !state.isConnecting,
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("client_connect_button")
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+                            modifier = Modifier
+                                .height(30.dp)
+                                .testTag("client_connect_button")
                         ) {
                             if (state.isConnecting) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(14.dp),
+                                    modifier = Modifier.size(12.dp),
                                     strokeWidth = 2.dp,
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
-                                Spacer(Modifier.width(4.dp))
-                                Text("連線中")
+                                Spacer(Modifier.width(3.dp))
+                                Text("連線中", fontSize = 11.sp)
                             } else {
-                                Icon(Icons.Default.Cable, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("連線 (自動偵測熱點)")
+                                Icon(Icons.Default.Cable, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text("連線 (自動偵測熱點)", fontSize = 11.sp)
                             }
                         }
                     }
@@ -187,12 +190,12 @@ fun GlassesClientScreen(
                 // IP & Port Configuration Input (Auto-filled on Connect)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     OutlinedTextField(
                         value = state.targetIp,
                         onValueChange = onIpChanged,
-                        label = { Text("手機 IP") },
+                        label = { Text("手機 IP", fontSize = 11.sp) },
                         placeholder = { Text("192.168.43.1") },
                         enabled = !state.isConnected && !state.isConnecting,
                         modifier = Modifier
@@ -200,13 +203,13 @@ fun GlassesClientScreen(
                             .testTag("client_ip_input"),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
 
                     OutlinedTextField(
                         value = state.targetPort,
                         onValueChange = onPortChanged,
-                        label = { Text("Port") },
+                        label = { Text("Port", fontSize = 11.sp) },
                         placeholder = { Text("8080") },
                         enabled = !state.isConnected && !state.isConnecting,
                         modifier = Modifier
@@ -214,31 +217,31 @@ fun GlassesClientScreen(
                             .testTag("client_port_input"),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(8.dp)
                     )
                 }
 
                 // Error Banner if present
                 if (state.errorMessage != null) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(6.dp),
                         color = MaterialTheme.colorScheme.errorContainer,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
                                 Icons.Default.ErrorOutline,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = state.errorMessage,
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
                         }
@@ -252,7 +255,7 @@ fun GlassesClientScreen(
             RemoteLiveFrameView(
                 bitmap = state.remoteLiveFrame,
                 label = "手機 (Host Phone)",
-                onClose = { onClearMessages() }
+                onClose = onCloseLiveFrame
             )
         }
 
@@ -277,28 +280,30 @@ fun GlassesClientScreen(
         ) {
             Text(
                 text = "眼鏡螢幕即時顯示 (${state.messages.size})",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilledTonalButton(
                     onClick = { onSendMessage("Hello Phone") },
                     enabled = state.isConnected,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                    modifier = Modifier.height(28.dp)
                 ) {
-                    Text("快傳: Hello Phone", fontSize = 11.sp)
+                    Text("快傳: Hello Phone", fontSize = 10.sp)
                 }
 
                 OutlinedButton(
                     onClick = onClearMessages,
                     enabled = state.messages.isNotEmpty(),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                    modifier = Modifier.height(28.dp)
                 ) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("清空", fontSize = 11.sp)
+                    Text("清空", fontSize = 10.sp)
                 }
             }
         }
@@ -309,18 +314,18 @@ fun GlassesClientScreen(
                 .fillMaxWidth()
                 .weight(1f),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(10.dp)
         ) {
             if (state.messages.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
                             text = "尚未有任何訊息或影像",
@@ -329,7 +334,7 @@ fun GlassesClientScreen(
                         )
                         Text(
                             text = "點擊上方「連線 (自動偵測熱點)」即可一鍵直連手機！\n雙方支援文字、鏡頭相片、即時畫面與語音傳送！",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
@@ -340,8 +345,8 @@ fun GlassesClientScreen(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(state.messages, key = { it.id }) { msg ->
                         RichMessageBubble(msg = msg, onPlayAudio = onPlayAudio)
@@ -350,16 +355,18 @@ fun GlassesClientScreen(
             }
         }
 
-        // Message Input Row
+        // Message Input Row - Compact
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             OutlinedTextField(
                 value = state.inputText,
                 onValueChange = onInputChanged,
-                placeholder = { Text("輸入文字傳送給手機...") },
+                placeholder = { Text("輸入文字傳送給手機...", fontSize = 13.sp) },
                 modifier = Modifier
                     .weight(1f)
                     .testTag("client_message_input"),
@@ -372,18 +379,17 @@ fun GlassesClientScreen(
                         }
                     }
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(10.dp)
             )
 
             Button(
                 onClick = { onSendMessage(state.inputText) },
                 enabled = state.isConnected && state.inputText.isNotBlank(),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .height(56.dp)
-                    .testTag("client_send_button")
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.testTag("client_send_button")
             ) {
-                Icon(Icons.Default.Send, contentDescription = "傳送")
+                Icon(Icons.Default.Send, contentDescription = "傳送", modifier = Modifier.size(18.dp))
             }
         }
     }

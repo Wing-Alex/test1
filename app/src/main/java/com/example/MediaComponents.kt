@@ -13,11 +13,10 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,24 +31,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,27 +83,29 @@ fun MediaActionPanel(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Controls Row
+        // Controls Row - Slim & Compact
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Camera / Photo Button
             FilledTonalButton(
                 onClick = { isCameraPreviewVisible = !isCameraPreviewVisible },
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f)
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(34.dp)
             ) {
                 Icon(
                     if (isCameraPreviewVisible) Icons.Default.Close else Icons.Default.CameraAlt,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
-                Spacer(Modifier.width(4.dp))
-                Text(if (isCameraPreviewVisible) "關閉相機" else "拍照/鏡頭", fontSize = 11.sp)
+                Spacer(Modifier.width(3.dp))
+                Text(if (isCameraPreviewVisible) "關鏡頭" else "拍照/鏡頭", fontSize = 11.sp)
             }
 
             // Live Video Streaming Toggle
@@ -123,19 +119,21 @@ fun MediaActionPanel(
                     containerColor = if (isStreamingVideo) Color(0xFFEF4444) else MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = if (isStreamingVideo) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
                 ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f)
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(34.dp)
             ) {
                 Icon(
                     if (isStreamingVideo) Icons.Default.VideocamOff else Icons.Default.Videocam,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(3.dp))
                 Text(if (isStreamingVideo) "停止視訊" else "即時影像", fontSize = 11.sp)
             }
 
-            // Voice Clip Record (Hold or Click)
+            // Voice Clip Record Button
             Button(
                 onClick = {
                     if (isRecordingVoice) {
@@ -147,27 +145,29 @@ fun MediaActionPanel(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isRecordingVoice) Color(0xFFDC2626) else MaterialTheme.colorScheme.primary
                 ),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f)
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(34.dp)
             ) {
                 Icon(
                     if (isRecordingVoice) Icons.Default.Stop else Icons.Default.FiberManualRecord,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(12.dp)
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(3.dp))
                 Text(if (isRecordingVoice) "錄音中..." else "錄音傳送", fontSize = 11.sp)
             }
         }
 
-        // Camera Preview & Snap View (Shown when camera open)
+        // Camera Preview & Snap View (Compact: height 140dp)
         if (isCameraPreviewVisible) {
             Card(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.Black),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(140.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AndroidView(
@@ -192,12 +192,10 @@ fun MediaActionPanel(
                                 var lastFrameTime = 0L
                                 analysis.setAnalyzer(cameraExecutor) { imageProxy ->
                                     val now = System.currentTimeMillis()
-                                    // Throttle video stream to ~3-4 fps to save Wi-Fi bandwidth
                                     if (isStreamingVideo && (now - lastFrameTime > 250)) {
                                         lastFrameTime = now
                                         val bitmap = imageProxy.toBitmap()
                                         val rotated = rotateBitmap(bitmap, imageProxy.imageInfo.rotationDegrees)
-                                        // Scale down for stream
                                         val scaled = Bitmap.createScaledBitmap(rotated, 320, 240, true)
                                         onSendVideoFrame(scaled)
                                     }
@@ -232,7 +230,6 @@ fun MediaActionPanel(
                                     override fun onCaptureSuccess(image: ImageProxy) {
                                         val bitmap = image.toBitmap()
                                         val rotated = rotateBitmap(bitmap, image.imageInfo.rotationDegrees)
-                                        // Resize for sending
                                         val scaled = Bitmap.createScaledBitmap(rotated, 640, 480, true)
                                         onSendPhoto(scaled)
                                         image.close()
@@ -246,13 +243,15 @@ fun MediaActionPanel(
                         },
                         colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.White.copy(alpha = 0.9f)),
                         shape = CircleShape,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 12.dp)
+                            .padding(bottom = 6.dp)
+                            .height(28.dp)
                     ) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = "拍照傳送", tint = Color.Black)
-                        Spacer(Modifier.width(4.dp))
-                        Text("拍照傳送", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Icon(Icons.Default.CameraAlt, contentDescription = "拍照傳送", tint = Color.Black, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(3.dp))
+                        Text("拍照傳送", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
             }
@@ -270,13 +269,13 @@ fun RemoteLiveFrameView(
     if (bitmap == null) return
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -285,28 +284,29 @@ fun RemoteLiveFrameView(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(8.dp)
+                            .size(7.dp)
                             .clip(CircleShape)
                             .background(Color(0xFFEF4444))
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(
                         text = "LIVE $label 即時畫面",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color.White,
+                        fontSize = 11.sp
                     )
                 }
 
                 IconButton(
                     onClick = onClose,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "關閉", tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Close, contentDescription = "關閉視訊畫面", tint = Color.White, modifier = Modifier.size(14.dp))
                 }
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(2.dp))
 
             Image(
                 bitmap = bitmap.asImageBitmap(),
@@ -314,8 +314,8 @@ fun RemoteLiveFrameView(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .height(130.dp)
+                    .clip(RoundedCornerShape(6.dp))
                     .background(Color.Black)
             )
         }

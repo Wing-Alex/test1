@@ -290,8 +290,12 @@ class MainViewModel : ViewModel() {
         _serverState.update { it.copy(isRecordingVoice = false) }
     }
 
+    fun closeServerRemoteLiveFrame() {
+        _serverState.update { it.copy(remoteLiveFrame = null, isLiveStreaming = false) }
+    }
+
     fun clearServerMessages() {
-        _serverState.update { it.copy(messages = emptyList(), remoteLiveFrame = null) }
+        _serverState.update { it.copy(messages = emptyList()) }
     }
 
     // --- INMO Air 3 Glasses Client Operations ---
@@ -535,8 +539,12 @@ class MainViewModel : ViewModel() {
         _clientState.update { it.copy(isRecordingVoice = false) }
     }
 
+    fun closeClientRemoteLiveFrame() {
+        _clientState.update { it.copy(remoteLiveFrame = null, isLiveStreaming = false) }
+    }
+
     fun clearClientMessages() {
-        _clientState.update { it.copy(messages = emptyList(), remoteLiveFrame = null) }
+        _clientState.update { it.copy(messages = emptyList()) }
     }
 
     fun playVoiceMessage(audioData: ByteArray) {

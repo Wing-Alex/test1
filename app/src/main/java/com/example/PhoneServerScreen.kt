@@ -79,6 +79,7 @@ fun PhoneServerScreen(
     onStartVoiceRecord: () -> Unit,
     onStopVoiceRecord: () -> Unit,
     onPlayAudio: (ByteArray) -> Unit,
+    onCloseLiveFrame: () -> Unit,
     onInputChanged: (String) -> Unit,
     onClearMessages: () -> Unit,
     modifier: Modifier = Modifier
@@ -87,7 +88,6 @@ fun PhoneServerScreen(
     val listState = rememberLazyListState()
     var isStreamingVideo by remember { mutableStateOf(false) }
 
-    // Auto-scroll when new messages arrive
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size - 1)
@@ -97,10 +97,10 @@ fun PhoneServerScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 10.dp, vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Status & IP Card
+        // Status & IP Card - Ultra Compact
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -108,13 +108,13 @@ fun PhoneServerScreen(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(10.dp)
         ) {
             Column(
-                modifier = Modifier.padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Header with status indicator & Start/Stop toggle
+                // Header: Status + Start/Stop + IP on a unified compact grid
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -122,19 +122,19 @@ fun PhoneServerScreen(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(10.dp)
+                                .size(8.dp)
                                 .clip(CircleShape)
                                 .background(
                                     if (state.isRunning) Color(0xFF10B981) else Color(0xFF94A3B8)
                                 )
                         )
                         Text(
-                            text = if (state.isRunning) "Server 運行中" else "Server 已停止",
-                            style = MaterialTheme.typography.titleSmall,
+                            text = if (state.isRunning) "Server (Port ${state.port})" else "Server 已停止",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -143,128 +143,112 @@ fun PhoneServerScreen(
                     if (!state.isRunning) {
                         Button(
                             onClick = { onStartServer(8080) },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("server_start_button")
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+                            modifier = Modifier
+                                .height(30.dp)
+                                .testTag("server_start_button")
                         ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("啟動 (8080)")
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(2.dp))
+                            Text("啟動 (8080)", fontSize = 11.sp)
                         }
                     } else {
                         Button(
                             onClick = onStopServer,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("server_stop_button")
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
+                            modifier = Modifier
+                                .height(30.dp)
+                                .testTag("server_stop_button")
                         ) {
-                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("停止")
+                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(2.dp))
+                            Text("停止", fontSize = 11.sp)
                         }
                     }
                 }
 
-                // Compact Pure Numeric IP Display Card
+                // Compact Single-Row IP Bar
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "眼鏡端連線 IP：",
+                                text = "眼鏡連線 IP：",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = state.primaryIp,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = "Port: ${state.port}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                            }
+                            Text(
+                                text = state.primaryIp,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
                                 onClick = onRefreshNetwork,
-                                modifier = Modifier.size(36.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
-                                Icon(Icons.Default.Refresh, contentDescription = "重新偵測 IP", modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Refresh, contentDescription = "重新偵測", modifier = Modifier.size(15.dp))
                             }
-                            Button(
+                            FilledTonalButton(
                                 onClick = {
                                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     cm.setPrimaryClip(ClipData.newPlainText("Server IP", state.primaryIp))
-                                    android.widget.Toast.makeText(context, "已複製純 IP：${state.primaryIp}", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(context, "已複製：${state.primaryIp}", android.widget.Toast.LENGTH_SHORT).show()
                                 },
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier.height(26.dp)
                             ) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("複製", fontSize = 12.sp)
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(12.dp))
+                                Spacer(Modifier.width(2.dp))
+                                Text("複製", fontSize = 11.sp)
                             }
                         }
                     }
                 }
 
                 // Connected Clients Indicator
+                val isConnected = state.connectedClientsCount > 0
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    val isConnected = state.connectedClientsCount > 0
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = if (isConnected) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surface
                     ) {
                         Text(
-                            text = "連線狀態:",
+                            text = if (isConnected) "🟢 眼鏡已連線 (${state.connectedClientsCount} 裝置)" else "⚪ 等待眼鏡連線",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            fontWeight = FontWeight.Bold,
+                            color = if (isConnected) Color(0xFF2E7D32) else Color(0xFF64748B),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontSize = 10.sp
                         )
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = if (isConnected) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surface
-                        ) {
-                            Text(
-                                text = if (isConnected) "🟢 眼鏡已連線 (${state.connectedClientsCount} 裝置)" else "⚪ 等待眼鏡連線 (Disconnected)",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isConnected) Color(0xFF2E7D32) else Color(0xFF64748B),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
                     }
 
                     if (state.lastClientAddress != null) {
                         Text(
                             text = state.lastClientAddress.removePrefix("/"),
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                             fontFamily = FontFamily.Monospace,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
@@ -278,7 +262,7 @@ fun PhoneServerScreen(
             RemoteLiveFrameView(
                 bitmap = state.remoteLiveFrame,
                 label = "眼鏡 (INMO Air 3)",
-                onClose = { onClearMessages() }
+                onClose = onCloseLiveFrame
             )
         }
 
@@ -303,28 +287,30 @@ fun PhoneServerScreen(
         ) {
             Text(
                 text = "通訊紀錄 (${state.messages.size})",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilledTonalButton(
                     onClick = { onSendMessage("Hello Glasses") },
                     enabled = state.isRunning && state.connectedClientsCount > 0,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                    modifier = Modifier.height(28.dp)
                 ) {
-                    Text("快傳: Hello Glasses", fontSize = 11.sp)
+                    Text("快傳: Hello Glasses", fontSize = 10.sp)
                 }
 
                 OutlinedButton(
                     onClick = onClearMessages,
                     enabled = state.messages.isNotEmpty(),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                    modifier = Modifier.height(28.dp)
                 ) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(12.dp))
                     Spacer(Modifier.width(2.dp))
-                    Text("清空", fontSize = 11.sp)
+                    Text("清空", fontSize = 10.sp)
                 }
             }
         }
@@ -335,18 +321,18 @@ fun PhoneServerScreen(
                 .fillMaxWidth()
                 .weight(1f),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(10.dp)
         ) {
             if (state.messages.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp),
+                        .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
                             text = "尚未有任何訊息或影像",
@@ -355,7 +341,7 @@ fun PhoneServerScreen(
                         )
                         Text(
                             text = "1. Server 點擊「啟動」\n2. 眼鏡端點擊「連線」即可自動偵測並連接\n3. 雙方可即時傳送文字、相片、即時影像畫面與語音訊息！",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
@@ -366,8 +352,8 @@ fun PhoneServerScreen(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(state.messages, key = { it.id }) { msg ->
                         RichMessageBubble(msg = msg, onPlayAudio = onPlayAudio)
@@ -376,16 +362,18 @@ fun PhoneServerScreen(
             }
         }
 
-        // Message Input Row
+        // Message Input Row - Compact
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             OutlinedTextField(
                 value = state.inputText,
                 onValueChange = onInputChanged,
-                placeholder = { Text("輸入文字傳送給眼鏡...") },
+                placeholder = { Text("輸入文字傳送給眼鏡...", fontSize = 13.sp) },
                 modifier = Modifier
                     .weight(1f)
                     .testTag("server_message_input"),
@@ -398,18 +386,17 @@ fun PhoneServerScreen(
                         }
                     }
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(10.dp)
             )
 
             Button(
                 onClick = { onSendMessage(state.inputText) },
                 enabled = state.isRunning && state.inputText.isNotBlank(),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .height(56.dp)
-                    .testTag("server_send_button")
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                modifier = Modifier.testTag("server_send_button")
             ) {
-                Icon(Icons.Default.Send, contentDescription = "傳送")
+                Icon(Icons.Default.Send, contentDescription = "傳送", modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -427,7 +414,7 @@ fun RichMessageBubble(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = msg.senderLabel,
@@ -437,24 +424,24 @@ fun RichMessageBubble(
             )
             Text(
                 text = msg.formattedTime,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
 
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
 
         Surface(
             shape = RoundedCornerShape(
-                topStart = 14.dp,
-                topEnd = 14.dp,
-                bottomStart = if (isMe) 14.dp else 2.dp,
-                bottomEnd = if (isMe) 2.dp else 14.dp
+                topStart = 10.dp,
+                topEnd = 10.dp,
+                bottomStart = if (isMe) 10.dp else 2.dp,
+                bottomEnd = if (isMe) 2.dp else 10.dp
             ),
             color = if (isMe) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
             modifier = Modifier.fillMaxWidth(0.85f)
         ) {
-            Column(modifier = Modifier.padding(10.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
                 when (msg.type) {
                     MessageType.PHOTO -> {
                         if (msg.imageBitmap != null) {
@@ -464,11 +451,11 @@ fun RichMessageBubble(
                                 contentScale = ContentScale.Fit,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(200.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .height(160.dp)
+                                    .clip(RoundedCornerShape(6.dp))
                             )
                         }
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(2.dp))
                         Text(
                             text = "📷 相片",
                             style = MaterialTheme.typography.labelSmall,
@@ -478,33 +465,33 @@ fun RichMessageBubble(
                     MessageType.AUDIO_CLIP -> {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
                                     msg.audioData?.let { onPlayAudio(it) }
                                 }
-                                .padding(vertical = 4.dp)
+                                .padding(vertical = 2.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(30.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.VolumeUp, contentDescription = "播放", tint = Color.White, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.VolumeUp, contentDescription = "播放", tint = Color.White, modifier = Modifier.size(16.dp))
                             }
                             Column {
                                 Text(
                                     text = "語音訊息 (${msg.audioDurationSec} 秒)",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                                 Text(
                                     text = "點擊以播放聲音",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                                     color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                                 )
                             }
@@ -513,7 +500,7 @@ fun RichMessageBubble(
                     else -> {
                         Text(
                             text = msg.text,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
