@@ -1,5 +1,7 @@
 package com.example
 
+import android.content.Context
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +27,10 @@ data class ServerUiState(
     val lastClientAddress: String? = null,
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
-    val statusMessage: String = "Server stopped"
+    val statusMessage: String = "Server stopped",
+    val remoteLiveFrame: Bitmap? = null,
+    val isLiveStreaming: Boolean = false,
+    val isRecordingVoice: Boolean = false
 )
 
 data class ClientUiState(
@@ -37,7 +42,10 @@ data class ClientUiState(
     val statusMessage: String = "Disconnected",
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val remoteLiveFrame: Bitmap? = null,
+    val isLiveStreaming: Boolean = false,
+    val isRecordingVoice: Boolean = false
 )
 
 class MainViewModel : ViewModel() {
@@ -122,13 +130,21 @@ class MainViewModel : ViewModel() {
                     }
 
                     override fun onMessageReceived(message: String, fromAddress: String) {
-                        val chatMsg = ChatMessage(
-                            text = message,
-                            isOutgoing = false,
-                            senderLabel = "眼鏡 ($fromAddress)"
-                        )
-                        _serverState.update {
-                            it.copy(messages = it.messages + chatMsg)
+                        val parsed = ChatMessage.parseFromJson(message, "眼鏡 ($fromAddress)")
+                        if (parsed != null) {
+                            if (parsed.type == MessageType.VIDEO_FRAME) {
+                                // Live video frame stream update
+                                _serverState.update {
+                                    it.copy(
+                                        remoteLiveFrame = parsed.imageBitmap,
+                                        isLiveStreaming = true
+                                    )
+                                }
+                            } else {
+                                _serverState.update {
+                                    it.copy(messages = it.messages + parsed)
+                                }
+                            }
                         }
                     }
 
@@ -170,7 +186,9 @@ class MainViewModel : ViewModel() {
                 it.copy(
                     isRunning = false,
                     connectedClientsCount = 0,
-                    statusMessage = "Server 已停止"
+                    statusMessage = "Server 已停止",
+                    remoteLiveFrame = null,
+                    isLiveStreaming = false
                 )
             }
         }
@@ -189,11 +207,13 @@ class MainViewModel : ViewModel() {
             return
         }
 
+        val jsonPayload = ChatMessage.createTextJson(trimmed, "手機 (Server)")
         viewModelScope.launch(Dispatchers.IO) {
-            val sent = currentServer.broadcastText(trimmed)
+            val sent = currentServer.broadcastText(jsonPayload)
             if (sent) {
                 val outMsg = ChatMessage(
                     text = trimmed,
+                    type = MessageType.TEXT,
                     isOutgoing = true,
                     senderLabel = "手機 (Server)"
                 )
@@ -207,8 +227,71 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun sendServerPhoto(bitmap: Bitmap) {
+        val currentServer = serverInstance ?: return
+        if (!_serverState.value.isRunning) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val json = ChatMessage.createPhotoJson(bitmap, "手機 (Server)")
+            val sent = currentServer.broadcastText(json)
+            if (sent) {
+                val outMsg = ChatMessage(
+                    text = "📷 [相片]",
+                    type = MessageType.PHOTO,
+                    isOutgoing = true,
+                    senderLabel = "手機 (Server)",
+                    imageBitmap = bitmap
+                )
+                _serverState.update {
+                    it.copy(messages = it.messages + outMsg)
+                }
+            }
+        }
+    }
+
+    fun sendServerVideoFrame(bitmap: Bitmap) {
+        val currentServer = serverInstance ?: return
+        if (!_serverState.value.isRunning) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val json = ChatMessage.createVideoFrameJson(bitmap, "手機 (Server)")
+            currentServer.broadcastText(json)
+        }
+    }
+
+    fun startServerVoiceRecording() {
+        _serverState.update { it.copy(isRecordingVoice = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val (audioData, duration) = AudioHelper.recordAudioClip(5)
+            _serverState.update { it.copy(isRecordingVoice = false) }
+            if (audioData.isNotEmpty() && duration > 0) {
+                val currentServer = serverInstance
+                if (currentServer != null && _serverState.value.isRunning) {
+                    val json = ChatMessage.createAudioClipJson(audioData, duration, "手機 (Server)")
+                    val sent = currentServer.broadcastText(json)
+                    if (sent) {
+                        val outMsg = ChatMessage(
+                            text = "🎤 [語音訊息 ${duration}s]",
+                            type = MessageType.AUDIO_CLIP,
+                            isOutgoing = true,
+                            senderLabel = "手機 (Server)",
+                            audioDurationSec = duration,
+                            audioData = audioData
+                        )
+                        _serverState.update { it.copy(messages = it.messages + outMsg) }
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopServerVoiceRecording() {
+        AudioHelper.stopRecording()
+        _serverState.update { it.copy(isRecordingVoice = false) }
+    }
+
     fun clearServerMessages() {
-        _serverState.update { it.copy(messages = emptyList()) }
+        _serverState.update { it.copy(messages = emptyList(), remoteLiveFrame = null) }
     }
 
     // --- INMO Air 3 Glasses Client Operations ---
@@ -224,15 +307,6 @@ class MainViewModel : ViewModel() {
         }
     }
 
-    fun setTargetIpPreset(ip: String) {
-        _clientState.update {
-            it.copy(
-                targetIp = ip,
-                errorMessage = null
-            )
-        }
-    }
-
     fun updateTargetPort(port: String) {
         _clientState.update { it.copy(targetPort = port.trim()) }
     }
@@ -241,39 +315,47 @@ class MainViewModel : ViewModel() {
         _clientState.update { it.copy(inputText = text) }
     }
 
-    fun connectClient() {
-        val (ip, portStr) = NetworkUtils.sanitizeHostAndPort(
-            _clientState.value.targetIp,
-            _clientState.value.targetPort
-        )
+    /**
+     * Connect client. If context is provided, auto-detects the Wi-Fi gateway IP first!
+     */
+    fun connectClient(context: Context? = null) {
+        var ip = _clientState.value.targetIp
+        if (context != null) {
+            val autoGateway = NetworkUtils.getWifiGatewayIp(context)
+            if (!autoGateway.isNullOrBlank()) {
+                ip = autoGateway
+            }
+        }
+
+        val (cleanIp, portStr) = NetworkUtils.sanitizeHostAndPort(ip, _clientState.value.targetPort)
         val port = portStr.toIntOrNull() ?: 8080
 
-        if (ip.isEmpty()) {
+        if (cleanIp.isEmpty()) {
             _clientState.update { it.copy(errorMessage = "請輸入手機 Server IP") }
             return
         }
 
         _clientState.update {
             it.copy(
-                targetIp = ip,
+                targetIp = cleanIp,
                 targetPort = port.toString(),
                 isConnecting = true,
                 errorMessage = null,
-                statusMessage = "連線中至 ws://$ip:$port..."
+                statusMessage = "連線中至 ws://$cleanIp:$port..."
             )
         }
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 clientInstance?.close()
-                val uri = URI("ws://$ip:$port")
+                val uri = URI("ws://$cleanIp:$port")
                 val client = GlassesWebSocketClient(uri, object : GlassesWebSocketClient.Listener {
                     override fun onConnected() {
                         _clientState.update {
                             it.copy(
                                 isConnected = true,
                                 isConnecting = false,
-                                statusMessage = "已連線至 ws://$ip:$port",
+                                statusMessage = "已連線至 ws://$cleanIp:$port",
                                 errorMessage = null
                             )
                         }
@@ -284,19 +366,28 @@ class MainViewModel : ViewModel() {
                             it.copy(
                                 isConnected = false,
                                 isConnecting = false,
-                                statusMessage = "已中斷連線: $reason"
+                                statusMessage = "已中斷連線: $reason",
+                                remoteLiveFrame = null,
+                                isLiveStreaming = false
                             )
                         }
                     }
 
                     override fun onMessageReceived(message: String) {
-                        val chatMsg = ChatMessage(
-                            text = message,
-                            isOutgoing = false,
-                            senderLabel = "手機"
-                        )
-                        _clientState.update {
-                            it.copy(messages = it.messages + chatMsg)
+                        val parsed = ChatMessage.parseFromJson(message, "手機")
+                        if (parsed != null) {
+                            if (parsed.type == MessageType.VIDEO_FRAME) {
+                                _clientState.update {
+                                    it.copy(
+                                        remoteLiveFrame = parsed.imageBitmap,
+                                        isLiveStreaming = true
+                                    )
+                                }
+                            } else {
+                                _clientState.update {
+                                    it.copy(messages = it.messages + parsed)
+                                }
+                            }
                         }
                     }
 
@@ -343,7 +434,9 @@ class MainViewModel : ViewModel() {
                 it.copy(
                     isConnected = false,
                     isConnecting = false,
-                    statusMessage = "已中斷連線"
+                    statusMessage = "已中斷連線",
+                    remoteLiveFrame = null,
+                    isLiveStreaming = false
                 )
             }
         }
@@ -359,11 +452,13 @@ class MainViewModel : ViewModel() {
             return
         }
 
+        val jsonPayload = ChatMessage.createTextJson(trimmed, "眼鏡")
         viewModelScope.launch(Dispatchers.IO) {
-            val sent = client.sendText(trimmed)
+            val sent = client.sendText(jsonPayload)
             if (sent) {
                 val outMsg = ChatMessage(
                     text = trimmed,
+                    type = MessageType.TEXT,
                     isOutgoing = true,
                     senderLabel = "眼鏡"
                 )
@@ -377,8 +472,77 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun sendClientPhoto(bitmap: Bitmap) {
+        val client = clientInstance ?: return
+        if (!client.isOpen) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val json = ChatMessage.createPhotoJson(bitmap, "眼鏡")
+            val sent = client.sendText(json)
+            if (sent) {
+                val outMsg = ChatMessage(
+                    text = "📷 [相片]",
+                    type = MessageType.PHOTO,
+                    isOutgoing = true,
+                    senderLabel = "眼鏡",
+                    imageBitmap = bitmap
+                )
+                _clientState.update {
+                    it.copy(messages = it.messages + outMsg)
+                }
+            }
+        }
+    }
+
+    fun sendClientVideoFrame(bitmap: Bitmap) {
+        val client = clientInstance ?: return
+        if (!client.isOpen) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val json = ChatMessage.createVideoFrameJson(bitmap, "眼鏡")
+            client.sendText(json)
+        }
+    }
+
+    fun startClientVoiceRecording() {
+        _clientState.update { it.copy(isRecordingVoice = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val (audioData, duration) = AudioHelper.recordAudioClip(5)
+            _clientState.update { it.copy(isRecordingVoice = false) }
+            if (audioData.isNotEmpty() && duration > 0) {
+                val client = clientInstance
+                if (client != null && client.isOpen) {
+                    val json = ChatMessage.createAudioClipJson(audioData, duration, "眼鏡")
+                    val sent = client.sendText(json)
+                    if (sent) {
+                        val outMsg = ChatMessage(
+                            text = "🎤 [語音訊息 ${duration}s]",
+                            type = MessageType.AUDIO_CLIP,
+                            isOutgoing = true,
+                            senderLabel = "眼鏡",
+                            audioDurationSec = duration,
+                            audioData = audioData
+                        )
+                        _clientState.update { it.copy(messages = it.messages + outMsg) }
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopClientVoiceRecording() {
+        AudioHelper.stopRecording()
+        _clientState.update { it.copy(isRecordingVoice = false) }
+    }
+
     fun clearClientMessages() {
-        _clientState.update { it.copy(messages = emptyList()) }
+        _clientState.update { it.copy(messages = emptyList(), remoteLiveFrame = null) }
+    }
+
+    fun playVoiceMessage(audioData: ByteArray) {
+        viewModelScope.launch {
+            AudioHelper.playAudioClip(audioData)
+        }
     }
 
     override fun onCleared() {

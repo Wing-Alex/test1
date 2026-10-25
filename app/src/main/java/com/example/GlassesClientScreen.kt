@@ -1,7 +1,10 @@
 package com.example
 
-import androidx.compose.animation.AnimatedVisibility
+import android.content.Context
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,13 +26,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cable
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.LinkOff
-import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,12 +45,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -61,16 +68,22 @@ fun GlassesClientScreen(
     state: ClientUiState,
     onIpChanged: (String) -> Unit,
     onPortChanged: (String) -> Unit,
-    onConnect: () -> Unit,
+    onConnect: (Context) -> Unit,
     onDisconnect: () -> Unit,
     onSendMessage: (String) -> Unit,
+    onSendPhoto: (Bitmap) -> Unit,
+    onSendVideoFrame: (Bitmap) -> Unit,
+    onStartVoiceRecord: () -> Unit,
+    onStopVoiceRecord: () -> Unit,
+    onPlayAudio: (ByteArray) -> Unit,
     onInputChanged: (String) -> Unit,
     onClearMessages: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val listState = rememberLazyListState()
+    var isStreamingVideo by remember { mutableStateOf(false) }
 
-    // Auto-scroll when new messages arrive
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size - 1)
@@ -80,22 +93,24 @@ fun GlassesClientScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // AR Glasses Connection Control Card
+        // Glasses Client Connection Card
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("client_config_card"),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             ),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(12.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Status Header
+                // Header with status indicator & Connect toggle
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -107,7 +122,7 @@ fun GlassesClientScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(12.dp)
+                                .size(10.dp)
                                 .clip(CircleShape)
                                 .background(
                                     when {
@@ -120,54 +135,56 @@ fun GlassesClientScreen(
                         Text(
                             text = when {
                                 state.isConnected -> "已連線 (Connected)"
-                                state.isConnecting -> "連線中 (Connecting...)"
-                                else -> "未連線 (Disconnected)"
+                                state.isConnecting -> "連線中..."
+                                else -> "未連線"
                             },
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    // Connection Action Button
+                    // Connection Action Button (One-click: auto-detects hotspot and connects)
                     if (state.isConnected) {
                         Button(
                             onClick = onDisconnect,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
                             ),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                             modifier = Modifier.testTag("client_disconnect_button")
                         ) {
-                            Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("中斷")
                         }
                     } else {
                         Button(
-                            onClick = onConnect,
-                            enabled = !state.isConnecting && state.targetIp.isNotBlank(),
-                            shape = RoundedCornerShape(12.dp),
+                            onClick = { onConnect(context) },
+                            enabled = !state.isConnecting,
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                             modifier = Modifier.testTag("client_connect_button")
                         ) {
                             if (state.isConnecting) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(14.dp),
                                     strokeWidth = 2.dp,
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(4.dp))
                                 Text("連線中")
                             } else {
-                                Icon(Icons.Default.Cable, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Cable, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("連線 (Connect)")
+                                Text("連線 (自動偵測熱點)")
                             }
                         }
                     }
                 }
 
-                // IP & Port Configuration Input
+                // IP & Port Configuration Input (Auto-filled on Connect)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -175,8 +192,8 @@ fun GlassesClientScreen(
                     OutlinedTextField(
                         value = state.targetIp,
                         onValueChange = onIpChanged,
-                        label = { Text("手機 IP (純數字)") },
-                        placeholder = { Text("192.168.43.1 或 10.0.2.2") },
+                        label = { Text("手機 IP") },
+                        placeholder = { Text("192.168.43.1") },
                         enabled = !state.isConnected && !state.isConnecting,
                         modifier = Modifier
                             .weight(0.7f)
@@ -201,56 +218,6 @@ fun GlassesClientScreen(
                     )
                 }
 
-                Text(
-                    text = "提示：只須輸入純 IP 數字，系統會自動清除 ws:// 前綴與後綴斜線。",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-
-                // Quick Fill Presets for Real Device vs Emulator
-                if (!state.isConnected) {
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        FilledTonalButton(
-                            onClick = {
-                                val detectedGateway = NetworkUtils.getWifiGatewayIp(context)
-                                if (!detectedGateway.isNullOrBlank()) {
-                                    onIpChanged(detectedGateway)
-                                    android.widget.Toast.makeText(context, "偵測到熱點主機：$detectedGateway", android.widget.Toast.LENGTH_SHORT).show()
-                                } else {
-                                    onIpChanged("192.168.43.1")
-                                    android.widget.Toast.makeText(context, "未偵測到 Gateway，已填入預設熱點 192.168.43.1", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier.weight(1.3f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
-                        ) {
-                            Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("⚡自動偵測熱點主機", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        FilledTonalButton(
-                            onClick = { onIpChanged("192.168.43.1") },
-                            modifier = Modifier.weight(0.9f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                        ) {
-                            Text("192.168.43.1", fontSize = 11.sp)
-                        }
-
-                        FilledTonalButton(
-                            onClick = { onIpChanged("10.0.2.2") },
-                            modifier = Modifier.weight(0.8f),
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                        ) {
-                            Text("10.0.2.2", fontSize = 11.sp)
-                        }
-                    }
-                }
-
                 // Error Banner if present
                 if (state.errorMessage != null) {
                     Surface(
@@ -259,19 +226,19 @@ fun GlassesClientScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
                                 Icons.Default.ErrorOutline,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                             Text(
                                 text = state.errorMessage,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
                         }
@@ -280,40 +247,63 @@ fun GlassesClientScreen(
             }
         }
 
-        // Quick Preset Testing Row
+        // Live Remote Video Frame Stream (Received from Phone)
+        if (state.remoteLiveFrame != null) {
+            RemoteLiveFrameView(
+                bitmap = state.remoteLiveFrame,
+                label = "手機 (Host Phone)",
+                onClose = { onClearMessages() }
+            )
+        }
+
+        // Multimedia Controls Panel (Photo, Video, Voice)
+        if (state.isConnected) {
+            MediaActionPanel(
+                onSendPhoto = onSendPhoto,
+                onSendVideoFrame = onSendVideoFrame,
+                onStartVoiceRecord = onStartVoiceRecord,
+                onStopVoiceRecord = onStopVoiceRecord,
+                isRecordingVoice = state.isRecordingVoice,
+                isStreamingVideo = isStreamingVideo,
+                onToggleVideoStream = { isStreamingVideo = it }
+            )
+        }
+
+        // Chat Header & Quick Actions
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            FilledTonalButton(
-                onClick = { onSendMessage("Hello Phone") },
-                enabled = state.isConnected,
-                modifier = Modifier.testTag("send_hello_phone_btn")
-            ) {
-                Text("快速傳送：Hello Phone")
-            }
+            Text(
+                text = "眼鏡螢幕即時顯示 (${state.messages.size})",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
-            if (state.messages.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilledTonalButton(
+                    onClick = { onSendMessage("Hello Phone") },
+                    enabled = state.isConnected,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text("快傳: Hello Phone", fontSize = 11.sp)
+                }
+
                 OutlinedButton(
                     onClick = onClearMessages,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    enabled = state.messages.isNotEmpty(),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("清空紀錄")
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text("清空", fontSize = 11.sp)
                 }
             }
         }
 
-        // Large High-Contrast Display for Smart Glasses HUD
-        Text(
-            text = "眼鏡螢幕即時顯示 (${state.messages.size})",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
+        // Messages List
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -330,15 +320,15 @@ fun GlassesClientScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = "尚未有任何訊息",
+                            text = "尚未有任何訊息或影像",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
                         Text(
-                            text = "• 實體手機熱點：請輸入 192.168.43.1\n• 電腦兩台模擬器：請輸入 10.0.2.2 (需先於終端機執行 adb forward)\n點擊「連線」後即可測試互傳！",
+                            text = "點擊上方「連線 (自動偵測熱點)」即可一鍵直連手機！\n雙方支援文字、鏡頭相片、即時畫面與語音傳送！",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -350,11 +340,11 @@ fun GlassesClientScreen(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.messages, key = { it.id }) { msg ->
-                        GlassesMessageBubble(msg = msg)
+                        RichMessageBubble(msg = msg, onPlayAudio = onPlayAudio)
                     }
                 }
             }
@@ -395,53 +385,6 @@ fun GlassesClientScreen(
             ) {
                 Icon(Icons.Default.Send, contentDescription = "傳送")
             }
-        }
-    }
-}
-
-@Composable
-fun GlassesMessageBubble(msg: ChatMessage) {
-    val isMe = msg.isOutgoing
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = if (isMe) "INMO Air 3 (本機)" else "手機 (Remote)",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = if (isMe) Color(0xFF0284C7) else MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = msg.formattedTime,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-        }
-
-        Spacer(Modifier.height(3.dp))
-
-        Surface(
-            shape = RoundedCornerShape(
-                topStart = 14.dp,
-                topEnd = 14.dp,
-                bottomStart = if (isMe) 14.dp else 2.dp,
-                bottomEnd = if (isMe) 2.dp else 14.dp
-            ),
-            color = if (isMe) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.fillMaxWidth(0.9f)
-        ) {
-            Text(
-                text = msg.text,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (isMe) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-            )
         }
     }
 }
