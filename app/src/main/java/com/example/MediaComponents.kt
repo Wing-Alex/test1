@@ -11,8 +11,10 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +36,7 @@ import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -42,6 +45,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -263,7 +267,8 @@ fun MediaActionPanel(
 fun RemoteLiveFrameView(
     bitmap: Bitmap?,
     label: String,
-    onClose: () -> Unit,
+    isVisible: Boolean,
+    onToggleVisibility: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (bitmap == null) return
@@ -277,7 +282,9 @@ fun RemoteLiveFrameView(
     ) {
         Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onToggleVisibility(!isVisible) },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -298,26 +305,37 @@ fun RemoteLiveFrameView(
                     )
                 }
 
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "關閉視訊畫面", tint = Color.White, modifier = Modifier.size(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (isVisible) "收起畫面" else "展開畫面",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = Color(0xFF94A3B8)
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Icon(
+                        if (isVisible) Icons.Default.Close else Icons.Default.Videocam,
+                        contentDescription = if (isVisible) "隱藏畫面" else "展開畫面",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
                 }
             }
 
-            Spacer(Modifier.height(2.dp))
-
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "即時影像",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(130.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.Black)
-            )
+            AnimatedVisibility(visible = isVisible) {
+                Column {
+                    Spacer(Modifier.height(3.dp))
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "即時影像",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(130.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black)
+                    )
+                }
+            }
         }
     }
 }
@@ -327,4 +345,112 @@ fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
     val matrix = Matrix()
     matrix.postRotate(degrees.toFloat())
     return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+}
+
+@Composable
+fun RichMessageBubble(
+    msg: ChatMessage,
+    onPlayAudio: (ByteArray) -> Unit
+) {
+    val isMe = msg.isOutgoing
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isMe) Alignment.End else Alignment.Start
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = msg.senderLabel,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (isMe) MaterialTheme.colorScheme.primary else Color(0xFF0284C7)
+            )
+            Text(
+                text = msg.formattedTime,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+
+        Spacer(Modifier.height(2.dp))
+
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 10.dp,
+                topEnd = 10.dp,
+                bottomStart = if (isMe) 10.dp else 2.dp,
+                bottomEnd = if (isMe) 2.dp else 10.dp
+            ),
+            color = if (isMe) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer,
+            modifier = Modifier.fillMaxWidth(0.85f)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                when (msg.type) {
+                    MessageType.PHOTO -> {
+                        if (msg.imageBitmap != null) {
+                            Image(
+                                bitmap = msg.imageBitmap.asImageBitmap(),
+                                contentDescription = "相片",
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(160.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                            )
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = "📷 相片",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    MessageType.AUDIO_CLIP -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    msg.audioData?.let { onPlayAudio(it) }
+                                }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.VolumeUp, contentDescription = "播放", tint = Color.White, modifier = Modifier.size(16.dp))
+                            }
+                            Column {
+                                Text(
+                                    text = "語音訊息 (${msg.audioDurationSec} 秒)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    text = "點擊以播放聲音",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
+                                    color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = msg.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

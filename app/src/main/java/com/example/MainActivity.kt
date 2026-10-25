@@ -9,18 +9,22 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -28,8 +32,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,7 +59,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainApp(viewModel: MainViewModel = viewModel()) {
     val context = LocalContext.current
@@ -88,64 +89,63 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(vertical = 0.dp)
+            // Clean Top Header with proper Safe Drawing WindowInsets
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(5.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.padding(end = 6.dp)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Text(
-                                text = "Wi-Fi",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "INMO Link",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = " • 雙向影音文字",
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                modifier = Modifier.padding(start = 6.dp)
-                            )
-                        }
+                        Text(
+                            text = "Wi-Fi",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                            fontSize = 10.sp
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                modifier = Modifier.height(48.dp)
-            )
+                    Text(
+                        text = "INMO Link",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = " • 雙向影音文字",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
         },
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.height(56.dp)
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 NavigationBarItem(
                     selected = currentMode == AppMode.PHONE_SERVER,
                     onClick = { viewModel.setMode(AppMode.PHONE_SERVER) },
-                    icon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                    label = { Text("手機端 (Server)", fontSize = 11.sp) },
+                    icon = { Icon(Icons.Default.PhoneAndroid, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    label = { Text("手機端 (Server)", fontSize = 10.sp) },
                     modifier = Modifier.testTag("tab_phone_server")
                 )
                 NavigationBarItem(
                     selected = currentMode == AppMode.GLASSES_CLIENT,
                     onClick = { viewModel.setMode(AppMode.GLASSES_CLIENT) },
-                    icon = { Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                    label = { Text("眼鏡端 (Client)", fontSize = 11.sp) },
+                    icon = { Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    label = { Text("眼鏡端 (Client)", fontSize = 10.sp) },
                     modifier = Modifier.testTag("tab_glasses_client")
                 )
             }
@@ -169,7 +169,8 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                         onStartVoiceRecord = { viewModel.startServerVoiceRecording() },
                         onStopVoiceRecord = { viewModel.stopServerVoiceRecording() },
                         onPlayAudio = { data -> viewModel.playVoiceMessage(data) },
-                        onCloseLiveFrame = { viewModel.closeServerRemoteLiveFrame() },
+                        onToggleLiveFrame = { show -> viewModel.toggleServerRemoteVideo(show) },
+                        onToggleConnectionCard = { viewModel.toggleServerConnectionCard() },
                         onInputChanged = { text -> viewModel.updateServerInput(text) },
                         onClearMessages = { viewModel.clearServerMessages() }
                     )
@@ -187,7 +188,8 @@ fun MainApp(viewModel: MainViewModel = viewModel()) {
                         onStartVoiceRecord = { viewModel.startClientVoiceRecording() },
                         onStopVoiceRecord = { viewModel.stopClientVoiceRecording() },
                         onPlayAudio = { data -> viewModel.playVoiceMessage(data) },
-                        onCloseLiveFrame = { viewModel.closeClientRemoteLiveFrame() },
+                        onToggleLiveFrame = { show -> viewModel.toggleClientRemoteVideo(show) },
+                        onToggleConnectionCard = { viewModel.toggleClientConnectionCard() },
                         onInputChanged = { text -> viewModel.updateClientInput(text) },
                         onClearMessages = { viewModel.clearClientMessages() }
                     )

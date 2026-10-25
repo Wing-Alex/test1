@@ -30,6 +30,8 @@ data class ServerUiState(
     val statusMessage: String = "Server stopped",
     val remoteLiveFrame: Bitmap? = null,
     val isLiveStreaming: Boolean = false,
+    val showRemoteVideo: Boolean = true,
+    val isConnectionCardExpanded: Boolean = false,
     val isRecordingVoice: Boolean = false
 )
 
@@ -45,6 +47,8 @@ data class ClientUiState(
     val errorMessage: String? = null,
     val remoteLiveFrame: Bitmap? = null,
     val isLiveStreaming: Boolean = false,
+    val showRemoteVideo: Boolean = true,
+    val isConnectionCardExpanded: Boolean = false,
     val isRecordingVoice: Boolean = false
 )
 
@@ -291,7 +295,15 @@ class MainViewModel : ViewModel() {
     }
 
     fun closeServerRemoteLiveFrame() {
-        _serverState.update { it.copy(remoteLiveFrame = null, isLiveStreaming = false) }
+        _serverState.update { it.copy(showRemoteVideo = false) }
+    }
+
+    fun toggleServerRemoteVideo(show: Boolean) {
+        _serverState.update { it.copy(showRemoteVideo = show) }
+    }
+
+    fun toggleServerConnectionCard() {
+        _serverState.update { it.copy(isConnectionCardExpanded = !it.isConnectionCardExpanded) }
     }
 
     fun clearServerMessages() {
@@ -540,7 +552,15 @@ class MainViewModel : ViewModel() {
     }
 
     fun closeClientRemoteLiveFrame() {
-        _clientState.update { it.copy(remoteLiveFrame = null, isLiveStreaming = false) }
+        _clientState.update { it.copy(showRemoteVideo = false) }
+    }
+
+    fun toggleClientRemoteVideo(show: Boolean) {
+        _clientState.update { it.copy(showRemoteVideo = show) }
+    }
+
+    fun toggleClientConnectionCard() {
+        _clientState.update { it.copy(isConnectionCardExpanded = !it.isConnectionCardExpanded) }
     }
 
     fun clearClientMessages() {
